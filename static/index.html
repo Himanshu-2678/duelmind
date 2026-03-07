@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DuelMind</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    /* ─── VARIABLES ─────────────────────────────────── */
+    :root {
+      --claude:   #7ecfc4;
+      --gemini:   #e8a85f;
+      --transition: 0.35s ease;
+    }
+
+    [data-theme="dark"] {
+      --bg:         #141414;
+      --bg2:        #1a1a1a;
+      --bg3:        #202020;
+      --border:     #272727;
+      --border2:    #2e2e2e;
+      --text:       #e2ddd6;
+      --text2:      #888;
+      --text3:      #444;
+      --grain:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    }
+
+    [data-theme="light"] {
+      --bg:         #faf8f4;
+      --bg2:        #f4f1eb;
+      --bg3:        #ede9e1;
+      --border:     #e5e0d5;
+      --border2:    #d8d2c6;
+      --text:       #2a2520;
+      --text2:      #8a8078;
+      --text3:      #bab4aa;
+      --grain:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    }
+
+    /* ─── RESET ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: var(--grain);
+      background-repeat: repeat;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 1;
+    }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ─── KEYFRAMES ──────────────────────────────────── */
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+    @keyframes blink    { 0%,100%{opacity:0.2} 50%{opacity:1} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    @keyframes spin     { to { transform: rotate(360deg); } }
+    @keyframes shimmer  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+    /* ─── SCREENS ────────────────────────────────────── */
+    .screen { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
+    .screen.active { display: flex; }
+
+    /* ─── TOP BAR ────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text);
+    }
+
+    .logo span { color: var(--claude); }
+
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+
+    /* ─── THEME TOGGLE ───────────────────────────────── */
+    .theme-toggle {
+      width: 42px;
+      height: 22px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 11px;
+      cursor: pointer;
+      position: relative;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .theme-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--text2);
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    [data-theme="light"] .theme-toggle::after {
+      transform: translateX(20px);
+      background: var(--gemini);
+    }
+
+    .theme-icon {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    /* ─── SETUP SCREEN ───────────────────────────────── */
+    #setup {
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .setup-card {
+      width: 100%;
+      max-width: 480px;
+      animation: fadeUp 0.6s ease;
+    }
+
+    .setup-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .setup-header .vs-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+
+    .dot-claude { background: var(--claude); box-shadow: 0 0 10px var(--claude); }
+    .dot-gemini { background: var(--gemini); box-shadow: 0 0 10px var(--gemini); }
+
+    .vs-text {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--text3);
+      text-transform: uppercase;
+    }
+
+    .setup-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 42px;
+      font-weight: 300;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      line-height: 1;
+      margin-bottom: 18px;
+    }
+
+    .setup-sub {
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ─── FORM ELEMENTS ──────────────────────────────── */
+    .field { margin-bottom: 18px; }
+
+    .field label {
+      display: block;
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 13px 15px;
+      color: var(--text);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 16px;
+      font-weight: 400;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      resize: none;
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--text3); font-style: italic; }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--border2);
+      background: var(--bg3);
+    }
+
+    .field select {
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .field .hint {
+      font-size: 9px;
+      color: var(--text3);
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ─── DIVIDER ────────────────────────────────────── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 22px 0;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider span {
+      font-size: 9px;
+      color: var(--text3);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* ─── BUTTON ─────────────────────────────────────── */
+    .btn-start {
+      width: 100%;
+      padding: 15px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-start::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--claude)18, var(--gemini)18);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .btn-start:hover::before { opacity: 1; }
+    .btn-start:hover { border-color: var(--text3); }
+    .btn-start span { position: relative; z-index: 1; }
+
+    .error-msg {
+      font-size: 10px;
+      color: #e07070;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+      display: none;
+    }
+
+    /* ─── ARENA SCREEN ───────────────────────────────── */
+    #arena { flex-direction: column; animation: fadeIn 0.4s ease; }
+
+    .arena-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 90px 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .arena-left { display: flex; align-items: center; gap: 14px; }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.2s;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .back-btn:hover { color: var(--text); }
+
+    .arena-topic {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px;
+      color: var(--text2);
+      font-style: italic;
+      max-width: 420px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Combatants indicator */
+    .combatants {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .combatant {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      transition: color 0.3s;
+    }
+
+    .combatant.active-claude { color: var(--claude); }
+    .combatant.active-gemini { color: var(--gemini); }
+
+    .combatant-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    .combatant-dot.claude { background: var(--claude); }
+    .combatant-dot.gemini { background: var(--gemini); }
+    .combatant.active-claude .combatant-dot.claude,
+    .combatant.active-gemini .combatant-dot.gemini {
+      animation: pulse 1.2s infinite;
+    }
+
+    .vs-divider { font-size: 9px; color: var(--text3); letter-spacing: 2px; }
+
+    /* Arena controls */
+    .arena-controls { display: flex; align-items: center; gap: 10px; }
+
+    .ctrl-btn {
+      padding: 7px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ctrl-btn:hover { border-color: var(--border2); color: var(--text); }
+    .ctrl-btn.danger { color: #e07070; border-color: rgba(224,112,112,0.2); }
+    .ctrl-btn.danger:hover { background: rgba(224,112,112,0.08); }
+    .ctrl-btn.success { color: var(--claude); border-color: rgba(126,207,196,0.2); }
+    .ctrl-btn.success:hover { background: rgba(126,207,196,0.08); }
+
+    /* Turn counter */
+    .turn-badge {
+      font-size: 9px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+
+    /* ─── INJECT BAR ─────────────────────────────────── */
+    .inject-bar {
+      padding: 12px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      display: none;
+      gap: 10px;
+      animation: fadeUp 0.2s ease;
+      transition: background var(--transition);
+    }
+
+    .inject-bar.open { display: flex; }
+
+    .inject-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .inject-input:focus { border-color: var(--border2); }
+    .inject-input::placeholder { color: var(--text3); font-style: italic; }
+
+    /* ─── MESSAGES AREA ──────────────────────────────── */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 10%;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      margin: auto;
+      color: var(--text3);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* Message bubble */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 28px;
+      animation: fadeUp 0.4s ease forwards;
+      opacity: 0;
+    }
+
+    .msg.llama { align-items: flex-start; }
+    .msg.qwen { align-items: flex-end; }
+    .msg.system { align-items: center; }
+
+    .msg-label {
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+      opacity: 0.7;
+    }
+
+    .msg.llama .msg-label { color: var(--claude); }
+    .msg.gemini .msg-label { color: var(--gemini); }
+    .msg.system .msg-label { color: var(--text3); }
+
+    .msg-bubble {
+      max-width: 60%;
+      padding: 14px 18px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      line-height: 1.8;
+      border-radius: 3px;
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .msg.llama .msg-bubble {
+    background: rgba(126, 207, 196, 0.06);
+    border: 1px solid rgba(126, 207, 196, 0.15);
+    border-radius: 3px 14px 14px 14px;
+    color: var(--text);
+    }
+
+    .msg.qwen .msg-bubble {
+    background: rgba(232, 168, 95, 0.06);
+    border: 1px solid rgba(232, 168, 95, 0.15);
+    border-radius: 14px 3px 14px 14px;
+    color: var(--text);
+    }
+
+    .msg.system .msg-bubble {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      font-size: 14px;
+      font-style: italic;
+      max-width: 50%;
+      text-align: center;
+    }
+
+    /* Conclusion message */
+    .msg.conclusion .msg-bubble {
+      border-color: rgba(126, 207, 196, 0.3);
+      background: rgba(126, 207, 196, 0.04);
+      box-shadow: 0 0 30px rgba(126, 207, 196, 0.05);
+    }
+
+    /* Typing dots */
+    .typing-dots {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+      height: 22px;
+    }
+
+    .typing-dots span {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+
+    .msg.llama .typing-dots span { background: var(--claude); }
+    .msg.qwen .typing-dots span { background: var(--gemini); }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* ─── STATUS BAR ─────────────────────────────────── */
+    .statusbar {
+      padding: 12px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text3);
+      transition: background 0.3s;
+    }
+
+    .status-dot.live { background: #6bcf8a; animation: pulse 1.8s infinite; }
+    .status-dot.paused { background: var(--text3); }
+    .status-dot.done { background: var(--gemini); }
+
+    .status-text {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+
+    /* ─── ERROR TOAST ────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(224,112,112,0.12);
+      border: 1px solid rgba(224,112,112,0.3);
+      border-radius: 6px;
+      padding: 10px 18px;
+      color: #e07070;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.5px;
+      z-index: 999;
+      display: none;
+      animation: fadeUp 0.3s ease;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    /* Reflection messages */
+.msg.reflection-llama { align-items: flex-start; }
+.msg.reflection-qwen  { align-items: flex-end; }
+
+.msg.reflection-llama .msg-label { color: var(--claude); opacity: 0.5; }
+.msg.reflection-qwen  .msg-label { color: var(--gemini); opacity: 0.5; }
+
+.msg.reflection-llama .msg-bubble,
+.msg.reflection-qwen  .msg-bubble {
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 14px;
+  font-style: italic;
+  max-width: 55%;
+}
+
+/* Reflection divider */
+.reflection-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 20px;
+}
+
+.reflection-divider::before,
+.reflection-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.reflection-divider span {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text2);
+  font-family: 'DM Mono', monospace;
+}
+
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ─── SETUP SCREEN ────────────────────────────────── -->
+<!-- ─── SETUP SCREEN ────────────────────────────────── -->
+<div id="setup" class="screen active">
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:24px 24px 64px;">
+    <div class="setup-card">
+      <div class="setup-header">
+        <div class="vs-row">
+          <div class="dot dot-claude"></div>
+          <span class="vs-text">vs</span>
+          <div class="dot dot-gemini"></div>
+        </div>
+        <div class="setup-title">DuelMind</div>
+        <div class="setup-sub">Llama · Qwen · Live Conversation</div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:15px; color:var(--text2); font-style:italic; margin-top:14px; letter-spacing:0.3px;">
+          Start a conversation between two AI models and watch them reason in real time.
+        </div>
+      </div>
+
+      <!-- Topic -->
+      <div class="field">
+        <label>Topic or Question</label>
+        <textarea id="topicInput" rows="4" placeholder="e.g. What is the nature of consciousness?"></textarea>
+      </div>
+
+      <!-- Personalities -->
+      <div class="field-row">
+        <div class="field">
+          <label>Llama Personality</label>
+          <select id="llamaPersonality">
+            <option value="Default">Default</option>
+            <option value="Philosopher">Philosopher</option>
+            <option value="Skeptic">Skeptic</option>
+            <option value="Optimist">Optimist</option>
+            <option value="Scientist">Scientist</option>
+            <option value="Debater">Debater</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Qwen Personality</label>
+          <select id="qwenPersonality">
+            <option value="Default">Default</option>
+            <option value="Skeptic">Skeptic</option>
+            <option value="Philosopher">Philosopher</option>
+            <option value="Optimist">Optimist</option>
+            <option value="Scientist">Scientist</option>
+            <option value="Debater">Debater</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Turn limit -->
+      <div class="field">
+        <label>Conversation Length</label>
+        <select id="turnLimit">
+          <option value="6">Short — 6 turns</option>
+          <option value="10" selected>Medium — 10 turns</option>
+          <option value="16">Long — 16 turns</option>
+          <option value="20">Deep — 20 turns</option>
+        </select>
+      </div>
+
+      <div class="error-msg" id="setupError"></div>
+
+      <button class="btn-start" onclick="startArena()">
+        <span>Begin Conversation →</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─── ARENA SCREEN ────────────────────────────────── -->
+<div id="arena" class="screen">
+
+  <!-- Top bar -->
+  <div class="arena-topbar">
+    <div class="arena-left">
+      <button class="back-btn" onclick="resetArena()">←</button>
+      <div class="arena-topic" id="arenaTopic"></div>
+    </div>
+
+    <div class="combatants">
+      <div class="combatant" id="claudeLabel">
+        <div class="combatant-dot claude"></div>
+        Llama
+      </div>
+      <span class="vs-divider">·</span>
+      <div class="combatant" id="geminiLabel">
+        <div class="combatant-dot gemini"></div>
+        Qwen
+      </div>
+    </div>
+
+    <div class="arena-controls">
+      <span class="turn-badge" id="turnBadge">0 / 10</span>
+      <button class="ctrl-btn" onclick="toggleInject()">Inject</button>
+      <button class="ctrl-btn" onclick="downloadConversation()">Export</button>
+      <button class="ctrl-btn danger" id="stopBtn" onclick="stopArena()">Stop</button>
+      <button class="ctrl-btn success" id="resumeBtn" onclick="resumeArena()" style="display:none;">Resume</button>
+    </div>
+  </div>
+
+  <!-- Inject bar -->
+  <div class="inject-bar" id="injectBar">
+    <input class="inject-input" id="injectInput" placeholder="Steer the conversation..." />
+    <button class="ctrl-btn" onclick="injectMessage()">Send →</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" id="messages">
+    <div class="empty-state" id="emptyState">Initialising conversation...</div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="status-dot live" id="statusDot"></div>
+    <span class="status-text" id="statusText">Connecting...</span>
+  </div>
+</div>
+
+<!-- Fixed theme toggle — always top right -->
+<button id="themeToggle" title="Toggle theme" style="
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  z-index: 999;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.35s ease, border-color 0.35s ease;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text2);
+">
+  Dark
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+  // ─── STATE ────────────────────────────────────────────
+  let state = {
+    topic: '',
+    claudeKey: '',
+    geminiKey: '',
+    totalTurns: 10,
+    currentTurn: 0,
+    history: [],
+    running: false,
+    currentSpeaker: 'claude'
+  };
+
+  // ─── THEME ────────────────────────────────────────────
+  const html = document.documentElement;
+
+  function toggleTheme() {
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    const btn = document.getElementById('themeToggle');
+
+    if (isDark) {
+      html.setAttribute('data-theme', 'light');
+      btn.textContent = 'Light';
+    } else {
+      html.setAttribute('data-theme', 'dark');
+      btn.textContent = 'Dark';
+    }
+  }
+
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+  // ─── SCREEN SWITCHING ─────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+// ─── START ────────────────────────────────────────────
+function startArena() {
+  const topic            = document.getElementById('topicInput').value.trim();
+  const turns            = parseInt(document.getElementById('turnLimit').value);
+  const errEl            = document.getElementById('setupError');
+  const llamaPersonality = document.getElementById('llamaPersonality').value;
+  const qwenPersonality  = document.getElementById('qwenPersonality').value;
+
+  if (!topic) { showError(errEl, 'Please enter a topic.'); return; }
+
+  errEl.style.display = 'none';
+
+  state = { topic, totalTurns: turns, currentTurn: 0, history: [],
+            running: true, currentSpeaker: 'llama',
+            llamaPersonality, qwenPersonality };
+
+  document.getElementById('arenaTopic').textContent  = `"${topic}"`;
+  document.getElementById('turnBadge').textContent   = 'Turn 0';
+  document.getElementById('messages').innerHTML      = '';
+  document.getElementById('stopBtn').style.display   = '';
+  document.getElementById('resumeBtn').style.display = 'none';
+
+  showScreen('arena');
+  runLoop();
+}
+
+  function showError(el, msg) {
+    el.textContent   = '⚠ ' + msg;
+    el.style.display = 'block';
+  }
+
+  // ─── MAIN LOOP ────────────────────────────────────────
+  async function runLoop() {
+    if (!state.running) return;
+    if (state.currentTurn >= state.totalTurns) {
+      setStatus('done', 'Conversation complete');
+      document.getElementById('stopBtn').style.display  = 'none';
+      document.getElementById('resumeBtn').style.display = 'none';
+      return;
+    }
+
+    const speaker    = state.currentSpeaker;
+    const isLastTurn = state.currentTurn === state.totalTurns - 1;
+
+    updateCombatantUI(speaker);
+    setStatus('live', `${capitalize(speaker)} is thinking...`);
+
+    // Show typing bubble
+    const typingId = addTypingBubble(speaker);
+
+    try {
+      const res = await fetch('/turn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        speaker,
+        topic:             state.topic,
+        history:           state.history,
+        current_turn:      state.currentTurn,
+        total_turns:       state.totalTurns,
+        llama_personality: state.llamaPersonality,
+        qwen_personality:  state.qwenPersonality,
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'API error');
+      }
+
+      const data = await res.json();
+
+      removeTypingBubble(typingId);
+      const isConclusion = isLastTurn;
+      addMessage(speaker, data.content, isConclusion);
+
+      state.history.push({ speaker, content: data.content });
+      state.currentTurn++;
+      state.currentSpeaker = speaker === 'llama' ? 'qwen' : 'llama';
+
+      // Add round divider after every complete round (claude + gemini = 1 round)
+      if (speaker === 'qwen' && state.currentTurn < state.totalTurns) {
+        addRoundDivider(Math.ceil(state.currentTurn / 2));
+      }
+
+      document.getElementById('turnBadge').textContent = 'Turn ' + Math.ceil(state.currentTurn / 2);
+
+      if (speaker === 'qwen' && state.currentTurn % 4 === 0 && state.currentTurn < state.totalTurns) {
+        await runReflection(false);
+      }
+
+      if (state.currentTurn < state.totalTurns) {
+        setTimeout(runLoop, 1400);
+      } else {
+        await runReflection(true);
+        setStatus('done', 'Conversation complete');
+        document.getElementById('stopBtn').style.display  = 'none';
+        document.getElementById('resumeBtn').style.display = 'none';
+        updateCombatantUI(null);
+      }
+
+    } catch (err) {
+      removeTypingBubble(typingId);
+      showToast(err.message || 'Something went wrong.');
+      stopArena();
+    }
+  }
+
+  // ─── MESSAGE RENDERING ────────────────────────────────
+  function addRoundDivider(roundNum) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.style.cssText = `
+      display: flex; align-items: center; gap: 14px;
+      margin: 8px 0 28px; opacity: 0;
+      animation: fadeIn 0.5s ease 0.3s forwards;
+    `;
+    div.innerHTML = `
+      <div style="flex:1; height:1px; background:var(--border);"></div>
+      <span style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text3); font-family:'DM Mono',monospace;">Turn ${roundNum}</span>
+      <div style="flex:1; height:1px; background:var(--border);"></div>
+    `;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+
+  function addReflectionDivider(label) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'reflection-divider';
+  div.innerHTML = `
+    <div></div>
+    <span>${label}</span>
+    <div></div>
+  `;
+  container.appendChild(div);
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+ }
+
+ function addReflectionMessage(speaker, content) {
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg reflection-${speaker}`;
+  div.innerHTML = `
+    <div class="msg-label">${capitalize(speaker)} · reflection</div>
+    <div class="msg-bubble">${escapeHtml(content)}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+}
+
+async function runReflection(isFinal) {
+  const label = isFinal ? 'Final Evaluation' : 'Reflection';
+  addReflectionDivider(`── ${label} ──`);
+
+  for (const speaker of ['llama', 'qwen']) {
+    const typingId = addTypingBubble(speaker);
+    setStatus('live', `${capitalize(speaker)} is reflecting...`);
+
+    try {
+      const res = await fetch('/reflect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          speaker,
+          topic:             state.topic,
+          history:           state.history,
+          current_turn:      state.currentTurn,
+          total_turns:       state.totalTurns,
+          llama_personality: state.llamaPersonality,
+          qwen_personality:  state.qwenPersonality
+        })
+      });
+
+      const data = await res.json();
+      removeTypingBubble(typingId);
+      addReflectionMessage(speaker, data.content);
+      await new Promise(r => setTimeout(r, 800));
+
+    } catch (err) {
+      removeTypingBubble(typingId);
+      showToast('Reflection failed: ' + err.message);
+    }
+  }
+}
+
+  function addMessage(speaker, content, isConclusion = false) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${speaker}${isConclusion ? ' conclusion' : ''}`;
+    div.innerHTML = `
+      <div class="msg-label">${capitalize(speaker)}${isConclusion ? ' · conclusion' : ''}</div>
+      <div class="msg-bubble">${escapeHtml(content)}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+
+  function addSystemMessage(content) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg system';
+    div.innerHTML = `
+      <div class="msg-label">You · injected</div>
+      <div class="msg-bubble">${escapeHtml(content)}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+
+  let typingCounter = 0;
+  function addTypingBubble(speaker) {
+    const id = 'typing-' + (++typingCounter);
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${speaker}`;
+    div.id = id;
+    div.innerHTML = `
+      <div class="msg-label">${capitalize(speaker)}</div>
+      <div class="msg-bubble">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+    `;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    return id;
+  }
+
+  function removeTypingBubble(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  // ─── CONTROLS ─────────────────────────────────────────
+  function stopArena() {
+    state.running = false;
+    setStatus('paused', 'Paused');
+    document.getElementById('stopBtn').style.display   = 'none';
+    document.getElementById('resumeBtn').style.display = '';
+    updateCombatantUI(null);
+  }
+
+  function resumeArena() {
+    if (state.currentTurn >= state.totalTurns) return;
+    state.running = true;
+    document.getElementById('stopBtn').style.display   = '';
+    document.getElementById('resumeBtn').style.display = 'none';
+    runLoop();
+  }
+
+  function resetArena() {
+    state.running = false;
+    showScreen('setup');
+  }
+
+  function toggleInject() {
+    const bar = document.getElementById('injectBar');
+    bar.classList.toggle('open');
+    if (bar.classList.contains('open')) {
+      document.getElementById('injectInput').focus();
+    }
+  }
+
+  function injectMessage() {
+    const input = document.getElementById('injectInput');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    addSystemMessage(text);
+    state.history.push({ speaker: 'system', content: `[User interjected]: ${text}` });
+    input.value = '';
+    document.getElementById('injectBar').classList.remove('open');
+
+    if (!state.running && state.currentTurn < state.totalTurns) {
+      resumeArena();
+    }
+  }
+
+  document.getElementById('injectInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') injectMessage();
+  });
+
+
+function downloadConversation() {
+  if (state.history.length === 0) {
+    showToast('No conversation to download yet.');
+    return;
+  }
+
+  let text = `DuelMind Conversation\n`;
+  text += `Topic: ${state.topic}\n`;
+  text += `Date: ${new Date().toLocaleString()}\n`;
+  text += `${'─'.repeat(50)}\n\n`;
+
+  state.history.forEach(msg => {
+    if (msg.speaker === 'system') {
+      text += `[You injected]: ${msg.content}\n\n`;
+    } else {
+      text += `${capitalize(msg.speaker).toUpperCase()}\n${msg.content}\n\n`;
+    }
+  });
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `duelmind-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+  // ─── UI HELPERS ───────────────────────────────────────
+  function updateCombatantUI(active) {
+    const cl = document.getElementById('claudeLabel');
+    const gl = document.getElementById('geminiLabel');
+    cl.className = 'combatant' + (active === 'llama' ? ' active-claude' : '');
+    gl.className = 'combatant' + (active === 'qwen' ? ' active-gemini' : '');
+  }
+
+  function setStatus(type, text) {
+    const dot = document.getElementById('statusDot');
+    dot.className = `status-dot ${type}`;
+    document.getElementById('statusText').textContent = text;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = '⚠ ' + msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 5000);
+  }
+
+  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/\n/g,'<br>');
+  }
+</script>
+</body>
+</html>
