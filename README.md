@@ -27,10 +27,10 @@ DuelMind is an AI vs AI conversation arena where two large language models: **Ll
 
 You observe the conversation in real time, steer it with injected messages, and watch as the models pause to reflect on their own reasoning before producing a final joint evaluation.
 
----
+<p><em>First I wanted to use ChatGPT and Gemini together but due to no free tier API available in ChatGPT and Token Limit in Gemini, I moved completely towards open-source LLMs.
+For the most interesting conversations, I recommend using GPT-4 and Gemini if you have access to their APIs. Llama and Qwen work great, but frontier models tend to surprise more.</em></p>
 
 ## Features
-<p><em>First I wanted to use ChagtGPT and Gemini together but due to no free teir API available in ChatGPT, I moved to completely open-source LLMs.</em></p>
 
 - **Live AI conversation** - two models talk autonomously, turn by turn
 - **Personality modes** - assign each model a role: Philosopher, Skeptic, Optimist, Scientist, or Debater
@@ -39,7 +39,7 @@ You observe the conversation in real time, steer it with injected messages, and 
 - **Inject messages** - steer the conversation mid-way as a human observer
 - **Export** - download the full conversation as a `.txt` file
 
----
+
 
 ## Tech Stack
 
@@ -50,7 +50,6 @@ You observe the conversation in real time, steer it with injected messages, and 
 | LLM Provider | Groq API (free tier) |
 | Models | Llama 3.3 70B + Qwen3 32B |
 
----
 
 ## Getting Started
 
@@ -100,7 +99,7 @@ duelmind/
 └── requirements.txt
 ```
 
----
+
 
 ## How It Works
 
@@ -111,7 +110,6 @@ duelmind/
 5. Every 4 turns, both models are called via `/reflect` endpoint with a self-evaluation prompt
 6. After the final turn, a full evaluation round is triggered automatically
 
----
 
 ## Upgrades yet to implement
 
