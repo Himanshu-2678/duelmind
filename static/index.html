@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DuelMind</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.png">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     /* ─── VARIABLES ─────────────────────────────────── */
     :root {
@@ -23,6 +25,9 @@
       --text2:      #888;
       --text3:      #444;
       --grain:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      --chart-grid: rgba(255,255,255,0.04);
+      --chart-tick: #3a3a3a;
+      --tooltip-bg: rgba(14,14,14,0.95);
     }
 
     [data-theme="light"] {
@@ -35,6 +40,9 @@
       --text2:      #8a8078;
       --text3:      #bab4aa;
       --grain:      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      --chart-grid: rgba(0,0,0,0.05);
+      --chart-tick: #c8c2b8;
+      --tooltip-bg: rgba(42,37,32,0.95);
     }
 
     /* ─── RESET ─────────────────────────────────────── */
@@ -69,7 +77,7 @@
     @keyframes blink    { 0%,100%{opacity:0.2} 50%{opacity:1} }
     @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.3} }
     @keyframes spin     { to { transform: rotate(360deg); } }
-    @keyframes shimmer  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    @keyframes scorePop { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
 
     /* ─── SCREENS ────────────────────────────────────── */
     .screen { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
@@ -98,13 +106,11 @@
     }
 
     .logo span { color: var(--claude); }
-
     .topbar-right { display: flex; align-items: center; gap: 14px; }
 
     /* ─── THEME TOGGLE ───────────────────────────────── */
     .theme-toggle {
-      width: 42px;
-      height: 22px;
+      width: 42px; height: 22px;
       background: var(--bg3);
       border: 1px solid var(--border2);
       border-radius: 11px;
@@ -126,14 +132,6 @@
     [data-theme="light"] .theme-toggle::after {
       transform: translateX(20px);
       background: var(--gemini);
-    }
-
-    .theme-icon {
-      font-size: 11px;
-      color: var(--text3);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      user-select: none;
     }
 
     /* ─── SETUP SCREEN ───────────────────────────────── */
@@ -163,11 +161,7 @@
       margin-bottom: 20px;
     }
 
-    .dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-    }
-
+    .dot { width: 9px; height: 9px; border-radius: 50%; }
     .dot-claude { background: var(--claude); box-shadow: 0 0 10px var(--claude); }
     .dot-gemini { background: var(--gemini); box-shadow: 0 0 10px var(--gemini); }
 
@@ -299,7 +293,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, var(--claude)18, var(--gemini)18);
+      background: linear-gradient(135deg, rgba(126,207,196,0.06), rgba(232,168,95,0.06));
       opacity: 0;
       transition: opacity 0.3s;
     }
@@ -352,7 +346,7 @@
       font-size: 15px;
       color: var(--text2);
       font-style: italic;
-      max-width: 420px;
+      max-width: 360px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -379,13 +373,10 @@
     .combatant.active-claude { color: var(--claude); }
     .combatant.active-gemini { color: var(--gemini); }
 
-    .combatant-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-    }
-
+    .combatant-dot { width: 7px; height: 7px; border-radius: 50%; }
     .combatant-dot.claude { background: var(--claude); }
     .combatant-dot.gemini { background: var(--gemini); }
+
     .combatant.active-claude .combatant-dot.claude,
     .combatant.active-gemini .combatant-dot.gemini {
       animation: pulse 1.2s infinite;
@@ -425,6 +416,61 @@
       background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 20px;
+    }
+
+    /* ─── CONSENSUS SCORE BADGE ──────────────────────── */
+    .score-badge {
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text3);
+      transition: color 0.6s ease, border-color 0.6s ease;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-badge.pop {
+      animation: scorePop 0.35s ease;
+    }
+
+    /* ─── CONSENSUS CHART PANEL ──────────────────────── */
+    .chart-panel {
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      overflow: hidden;
+      transition: height 0.35s ease, padding 0.35s ease, opacity 0.35s ease,
+                  background var(--transition), border-color var(--transition);
+      height: 118px;
+      padding: 12px 32px 10px;
+      position: relative;
+    }
+
+    .chart-panel.collapsed {
+      height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+      border-bottom-color: transparent;
+    }
+
+    .chart-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .chart-panel-label {
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+
+    .chart-panel canvas {
+      display: block;
     }
 
     /* ─── INJECT BAR ─────────────────────────────────── */
@@ -485,7 +531,7 @@
     }
 
     .msg.llama { align-items: flex-start; }
-    .msg.qwen { align-items: flex-end; }
+    .msg.qwen  { align-items: flex-end; }
     .msg.system { align-items: center; }
 
     .msg-label {
@@ -496,8 +542,8 @@
       opacity: 0.7;
     }
 
-    .msg.llama .msg-label { color: var(--claude); }
-    .msg.gemini .msg-label { color: var(--gemini); }
+    .msg.llama .msg-label  { color: var(--claude); }
+    .msg.qwen  .msg-label  { color: var(--gemini); }
     .msg.system .msg-label { color: var(--text3); }
 
     .msg-bubble {
@@ -511,17 +557,17 @@
     }
 
     .msg.llama .msg-bubble {
-    background: rgba(126, 207, 196, 0.06);
-    border: 1px solid rgba(126, 207, 196, 0.15);
-    border-radius: 3px 14px 14px 14px;
-    color: var(--text);
+      background: rgba(126,207,196,0.06);
+      border: 1px solid rgba(126,207,196,0.15);
+      border-radius: 3px 14px 14px 14px;
+      color: var(--text);
     }
 
     .msg.qwen .msg-bubble {
-    background: rgba(232, 168, 95, 0.06);
-    border: 1px solid rgba(232, 168, 95, 0.15);
-    border-radius: 14px 3px 14px 14px;
-    color: var(--text);
+      background: rgba(232,168,95,0.06);
+      border: 1px solid rgba(232,168,95,0.15);
+      border-radius: 14px 3px 14px 14px;
+      color: var(--text);
     }
 
     .msg.system .msg-bubble {
@@ -537,9 +583,9 @@
 
     /* Conclusion message */
     .msg.conclusion .msg-bubble {
-      border-color: rgba(126, 207, 196, 0.3);
-      background: rgba(126, 207, 196, 0.04);
-      box-shadow: 0 0 30px rgba(126, 207, 196, 0.05);
+      border-color: rgba(126,207,196,0.3);
+      background: rgba(126,207,196,0.04);
+      box-shadow: 0 0 30px rgba(126,207,196,0.05);
     }
 
     /* Typing dots */
@@ -557,7 +603,7 @@
     }
 
     .msg.llama .typing-dots span { background: var(--claude); }
-    .msg.qwen .typing-dots span { background: var(--gemini); }
+    .msg.qwen  .typing-dots span { background: var(--gemini); }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
@@ -580,9 +626,9 @@
       transition: background 0.3s;
     }
 
-    .status-dot.live { background: #6bcf8a; animation: pulse 1.8s infinite; }
+    .status-dot.live   { background: #6bcf8a; animation: pulse 1.8s infinite; }
     .status-dot.paused { background: var(--text3); }
-    .status-dot.done { background: var(--gemini); }
+    .status-dot.done   { background: var(--gemini); }
 
     .status-text {
       font-size: 9px;
@@ -612,54 +658,185 @@
       text-align: center;
     }
 
-    /* Reflection messages */
-.msg.reflection-llama { align-items: flex-start; }
-.msg.reflection-qwen  { align-items: flex-end; }
-
-.msg.reflection-llama .msg-label { color: var(--claude); opacity: 0.5; }
-.msg.reflection-qwen  .msg-label { color: var(--gemini); opacity: 0.5; }
-
-.msg.reflection-llama .msg-bubble,
-.msg.reflection-qwen  .msg-bubble {
-  background: transparent;
-  border: 1px dashed var(--border2);
-  border-radius: 8px;
-  color: var(--text2);
-  font-size: 14px;
-  font-style: italic;
-  max-width: 55%;
-}
-
-/* Reflection divider */
-.reflection-divider {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 8px 0 20px;
-}
-
-.reflection-divider::before,
-.reflection-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.reflection-divider span {
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text2);
-  font-family: 'DM Mono', monospace;
-}
-
     .toast.show { display: block; }
+
+    /* ─── REFLECTION MESSAGES ────────────────────────── */
+    .msg.reflection-llama { align-items: flex-start; }
+    .msg.reflection-qwen  { align-items: flex-end; }
+
+    .msg.reflection-llama .msg-label { color: var(--claude); opacity: 0.5; }
+    .msg.reflection-qwen  .msg-label { color: var(--gemini); opacity: 0.5; }
+
+    .msg.reflection-llama .msg-bubble,
+    .msg.reflection-qwen  .msg-bubble {
+      background: transparent;
+      border: 1px dashed var(--border2);
+      border-radius: 8px;
+      color: var(--text2);
+      font-size: 14px;
+      font-style: italic;
+      max-width: 55%;
+    }
+
+    /* Reflection divider */
+    .reflection-divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 8px 0 20px;
+    }
+
+    .reflection-divider::before,
+    .reflection-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .reflection-divider span {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ─── SYNTHESIS CARD ─────────────────────────────── */
+    /* neutral warm stone -- distinct from teal (llama) and amber (qwen) */
+    :root { --synthesis: #a09a8e; }
+
+    .synthesis-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 32px 0 12px;
+      animation: fadeUp 0.6s ease forwards;
+      opacity: 0;
+    }
+
+    .synthesis-divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .synthesis-divider::before,
+    .synthesis-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--border));
+    }
+
+    .synthesis-divider::after {
+      background: linear-gradient(to left, transparent, var(--border));
+    }
+
+    .synthesis-divider span {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--synthesis);
+      font-family: 'DM Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .synthesis-card {
+      width: 58%;
+      background: rgba(160,154,142,0.05);
+      border: 1px solid rgba(160,154,142,0.2);
+      border-radius: 10px;
+      padding: 24px 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    .synthesis-label {
+      font-size: 8px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--synthesis);
+      opacity: 0.8;
+      margin-bottom: 14px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .synthesis-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      line-height: 1.9;
+      color: var(--text2);
+      font-style: italic;
+    }
+
+    .synthesis-footer {
+      margin-top: 14px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ─── CONFLICT TAG ───────────────────────────────── */
+    .conflict-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 7px;
+      font-size: 8px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+      cursor: default;
+      position: relative;
+    }
+
+    .conflict-tag::before {
+      content: '·';
+      color: var(--gemini);
+      opacity: 0.6;
+    }
+
+    .conflict-tag:hover .conflict-tooltip {
+      display: block;
+    }
+
+    .conflict-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      width: 280px;
+      font-size: 10px;
+      line-height: 1.7;
+      color: var(--text2);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.3px;
+      text-transform: none;
+      z-index: 50;
+      white-space: normal;
+    }
+
+    .conflict-tooltip-type {
+      font-size: 8px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gemini);
+      opacity: 0.7;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
 
-<!-- ─── SETUP SCREEN ────────────────────────────────── -->
 <!-- ─── SETUP SCREEN ────────────────────────────────── -->
 <div id="setup" class="screen active">
   <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:24px 24px 64px;">
@@ -754,11 +931,22 @@
 
     <div class="arena-controls">
       <span class="turn-badge" id="turnBadge">0 / 10</span>
+      <span class="score-badge" id="scoreBadge" title="Consensus score — how much the models agree">◈ —</span>
+      <button class="ctrl-btn" id="chartToggleBtn" onclick="toggleChart()">Chart</button>
       <button class="ctrl-btn" onclick="toggleInject()">Inject</button>
       <button class="ctrl-btn" onclick="downloadConversation()">Export</button>
       <button class="ctrl-btn danger" id="stopBtn" onclick="stopArena()">Stop</button>
       <button class="ctrl-btn success" id="resumeBtn" onclick="resumeArena()" style="display:none;">Resume</button>
     </div>
+  </div>
+
+  <!-- Consensus chart panel -->
+  <div class="chart-panel collapsed" id="chartPanel">
+    <div class="chart-panel-header">
+      <span class="chart-panel-label">Consensus Score</span>
+      <span class="chart-panel-label" id="chartAvgLabel" style="color:var(--text3);"></span>
+    </div>
+    <canvas id="consensusChart" height="72"></canvas>
   </div>
 
   <!-- Inject bar -->
@@ -779,12 +967,9 @@
   </div>
 </div>
 
-<!-- Fixed theme toggle — always top right -->
+<!-- Fixed theme toggle -->
 <button id="themeToggle" title="Toggle theme" style="
-  position: fixed;
-  top: 14px;
-  right: 24px;
-  z-index: 999;
+  position: fixed; top: 14px; right: 24px; z-index: 999;
   padding: 6px 10px;
   background: var(--bg2);
   border: 1px solid var(--border2);
@@ -796,9 +981,7 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--text2);
-">
-  Dark
-</button>
+">Dark</button>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -808,14 +991,19 @@
   // ─── STATE ────────────────────────────────────────────
   let state = {
     topic: '',
-    claudeKey: '',
-    geminiKey: '',
     totalTurns: 10,
     currentTurn: 0,
     history: [],
     running: false,
-    currentSpeaker: 'claude'
+    currentSpeaker: 'llama',
+    llamaPersonality: 'Default',
+    qwenPersonality: 'Default'
   };
+
+  // ─── CHART STATE ──────────────────────────────────────
+  let consensusChart   = null;
+  let consensusScores  = [];
+  let chartVisible     = false;
 
   // ─── THEME ────────────────────────────────────────────
   const html = document.documentElement;
@@ -823,7 +1011,6 @@
   function toggleTheme() {
     const isDark = html.getAttribute('data-theme') === 'dark';
     const btn = document.getElementById('themeToggle');
-
     if (isDark) {
       html.setAttribute('data-theme', 'light');
       btn.textContent = 'Light';
@@ -831,6 +1018,7 @@
       html.setAttribute('data-theme', 'dark');
       btn.textContent = 'Dark';
     }
+    if (consensusChart) rebuildChart();
   }
 
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
@@ -841,31 +1029,52 @@
     document.getElementById(id).classList.add('active');
   }
 
-// ─── START ────────────────────────────────────────────
-function startArena() {
-  const topic            = document.getElementById('topicInput').value.trim();
-  const turns            = parseInt(document.getElementById('turnLimit').value);
-  const errEl            = document.getElementById('setupError');
-  const llamaPersonality = document.getElementById('llamaPersonality').value;
-  const qwenPersonality  = document.getElementById('qwenPersonality').value;
+  // ─── START ────────────────────────────────────────────
+  function startArena() {
+    const topic            = document.getElementById('topicInput').value.trim();
+    const turns            = parseInt(document.getElementById('turnLimit').value);
+    const errEl            = document.getElementById('setupError');
+    const llamaPersonality = document.getElementById('llamaPersonality').value;
+    const qwenPersonality  = document.getElementById('qwenPersonality').value;
 
-  if (!topic) { showError(errEl, 'Please enter a topic.'); return; }
+    if (!topic) { showError(errEl, 'Please enter a topic.'); return; }
+    errEl.style.display = 'none';
 
-  errEl.style.display = 'none';
+    state = {
+      topic, totalTurns: turns, currentTurn: 0, history: [],
+      running: true, currentSpeaker: 'llama',
+      llamaPersonality, qwenPersonality,
+      jointConclusion: null,
+      claims: [],
+      conflicts: []
+    };
 
-  state = { topic, totalTurns: turns, currentTurn: 0, history: [],
-            running: true, currentSpeaker: 'llama',
-            llamaPersonality, qwenPersonality };
+    // Reset chart
+    consensusScores = [];
+    document.getElementById('scoreBadge').textContent   = '◈ —';
+    document.getElementById('scoreBadge').style.color   = '';
+    document.getElementById('scoreBadge').style.borderColor = '';
+    document.getElementById('chartAvgLabel').textContent = '';
 
-  document.getElementById('arenaTopic').textContent  = `"${topic}"`;
-  document.getElementById('turnBadge').textContent   = 'Turn 0';
-  document.getElementById('messages').innerHTML      = '';
-  document.getElementById('stopBtn').style.display   = '';
-  document.getElementById('resumeBtn').style.display = 'none';
+    document.getElementById('arenaTopic').textContent  = `"${topic}"`;
+    document.getElementById('turnBadge').textContent   = 'Turn 0';
+    document.getElementById('messages').innerHTML      = '';
+    document.getElementById('stopBtn').style.display   = '';
+    document.getElementById('resumeBtn').style.display = 'none';
 
-  showScreen('arena');
-  runLoop();
-}
+    // Collapse chart panel (fresh start)
+    const panel = document.getElementById('chartPanel');
+    panel.classList.add('collapsed');
+    chartVisible = false;
+
+    showScreen('arena');
+
+    // Init chart after panel is in DOM
+    setTimeout(() => {
+      initChart();
+      runLoop();
+    }, 50);
+  }
 
   function showError(el, msg) {
     el.textContent   = '⚠ ' + msg;
@@ -888,7 +1097,6 @@ function startArena() {
     updateCombatantUI(speaker);
     setStatus('live', `${capitalize(speaker)} is thinking...`);
 
-    // Show typing bubble
     const typingId = addTypingBubble(speaker);
 
     try {
@@ -896,13 +1104,13 @@ function startArena() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        speaker,
-        topic:             state.topic,
-        history:           state.history,
-        current_turn:      state.currentTurn,
-        total_turns:       state.totalTurns,
-        llama_personality: state.llamaPersonality,
-        qwen_personality:  state.qwenPersonality,
+          speaker,
+          topic:             state.topic,
+          history:           state.history,
+          current_turn:      state.currentTurn,
+          total_turns:       state.totalTurns,
+          llama_personality: state.llamaPersonality,
+          qwen_personality:  state.qwenPersonality,
         })
       });
 
@@ -914,20 +1122,45 @@ function startArena() {
       const data = await res.json();
 
       removeTypingBubble(typingId);
-      const isConclusion = isLastTurn;
-      addMessage(speaker, data.content, isConclusion);
+      addMessage(speaker, data.content, isLastTurn);
 
       state.history.push({ speaker, content: data.content });
+
+      // store extracted claim silently — used by conflict detection (Step 3)
+      if (data.claim) {
+        state.claims.push({
+          speaker,
+          turn:    state.currentTurn,
+          content: data.content,
+          ...data.claim
+        });
+      }
+
       state.currentTurn++;
       state.currentSpeaker = speaker === 'llama' ? 'qwen' : 'llama';
 
-      // Add round divider after every complete round (claude + gemini = 1 round)
+      // After each complete exchange (Qwen just spoke), fetch consensus score + detect conflicts
+      if (speaker === 'qwen') {
+        const llamaMsg = [...state.history].reverse().find(m => m.speaker === 'llama');
+        if (llamaMsg) {
+          fetchConsensus(llamaMsg.content, data.content);
+        }
+        // conflict detection — needs structured claims from both sides
+        const llamaClaim = [...state.claims].reverse().find(c => c.speaker === 'llama');
+        const qwenClaim  = [...state.claims].reverse().find(c => c.speaker === 'qwen');
+        if (llamaClaim && qwenClaim) {
+          fetchConflicts(llamaClaim, qwenClaim, data.content);
+        }
+      }
+
+      // Round divider
       if (speaker === 'qwen' && state.currentTurn < state.totalTurns) {
         addRoundDivider(Math.ceil(state.currentTurn / 2));
       }
 
       document.getElementById('turnBadge').textContent = 'Turn ' + Math.ceil(state.currentTurn / 2);
 
+      // Mid-conversation reflection every 4 turns
       if (speaker === 'qwen' && state.currentTurn % 4 === 0 && state.currentTurn < state.totalTurns) {
         await runReflection(false);
       }
@@ -936,6 +1169,7 @@ function startArena() {
         setTimeout(runLoop, 1400);
       } else {
         await runReflection(true);
+        await runSynthesis();
         setStatus('done', 'Conversation complete');
         document.getElementById('stopBtn').style.display  = 'none';
         document.getElementById('resumeBtn').style.display = 'none';
@@ -947,6 +1181,290 @@ function startArena() {
       showToast(err.message || 'Something went wrong.');
       stopArena();
     }
+  }
+
+  // ─── SYNTHESIS ────────────────────────────────────────
+  async function runSynthesis() {
+    setStatus('live', 'Building joint conclusion...');
+
+    // Grab the last reflection from each speaker out of history
+    const llamaRef = [...state.history].reverse().find(m => m.speaker === 'llama' && m.type === 'reflection');
+    const qwenRef  = [...state.history].reverse().find(m => m.speaker === 'qwen'  && m.type === 'reflection');
+
+    // Fallback to last regular message if reflections not stored in history
+    const llamaText = llamaRef?.content || [...state.history].reverse().find(m => m.speaker === 'llama')?.content || '';
+    const qwenText  = qwenRef?.content  || [...state.history].reverse().find(m => m.speaker === 'qwen')?.content  || '';
+
+    try {
+      const res = await fetch('/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic:            state.topic,
+          history:          state.history,
+          llama_reflection: llamaText,
+          qwen_reflection:  qwenText
+        })
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // Store in state for export
+      state.jointConclusion = data.joint;
+
+      addSynthesisCard(data.joint);
+
+    } catch (e) {
+      // non-blocking — if synthesis fails, conversation is still complete
+    }
+  }
+
+  function addSynthesisCard(text) {
+    const container = document.getElementById('messages');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'synthesis-wrapper';
+
+    wrapper.innerHTML = `
+      <div class="synthesis-divider">
+        <span>Joint Conclusion</span>
+      </div>
+      <div class="synthesis-card">
+        <div class="synthesis-label">Kimi · synthesis</div>
+        <div class="synthesis-text">${escapeHtml(text)}</div>
+        <div class="synthesis-footer">llama · qwen · Kimi</div>
+      </div>
+    `;
+
+    container.appendChild(wrapper);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+
+  // ─── CONFLICT DETECTION ───────────────────────────────
+  async function fetchConflicts(llamaClaim, qwenClaim, qwenContent) {
+    try {
+      const res = await fetch('/detect_conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic:       state.topic,
+          llama_claim: llamaClaim,
+          qwen_claim:  qwenClaim
+        })
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.has_conflict && data.conflicts.length > 0) {
+        state.conflicts.push({
+          turn:      Math.ceil(state.currentTurn / 2),
+          conflicts: data.conflicts
+        });
+        // attach tag to the last Qwen bubble in the messages area
+        addConflictTag(data.conflicts);
+      }
+
+    } catch (e) {
+      // non-blocking
+    }
+  }
+
+  function addConflictTag(conflicts) {
+    // find the last qwen message bubble and append tag below it
+    const messages  = document.getElementById('messages');
+    const qwenMsgs  = messages.querySelectorAll('.msg.qwen');
+    const lastQwen  = qwenMsgs[qwenMsgs.length - 1];
+    if (!lastQwen) return;
+
+    conflicts.forEach(c => {
+      const tag = document.createElement('div');
+      tag.className = 'conflict-tag';
+      tag.innerHTML = `
+        conflict detected
+        <div class="conflict-tooltip">
+          <div class="conflict-tooltip-type">${escapeHtml(c.type)}</div>
+          ${escapeHtml(c.summary)}
+        </div>
+      `;
+      lastQwen.appendChild(tag);
+    });
+
+    messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+  }
+
+  // ─── CONSENSUS SCORE ──────────────────────────────────
+  async function fetchConsensus(messageA, messageB) {
+    try {
+      const res = await fetch('/consensus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic:     state.topic,
+          message_a: messageA,
+          message_b: messageB
+        })
+      });
+
+      if (!res.ok) return; // silent fail — don't interrupt conversation
+
+      const data = await res.json();
+      const turn = Math.ceil(state.currentTurn / 2);
+      updateConsensusChart(data.score, turn);
+
+    } catch (e) {
+      // non-blocking — chart simply won't update this turn
+    }
+  }
+
+  // ─── COLOR HELPERS ────────────────────────────────────
+  function scoreToColor(s) {
+    return s >= 68 ? '#7ecfc4' : s >= 38 ? '#666' : '#e8a85f';
+  }
+
+  function updateConsensusChart(score, turn) {
+    consensusScores.push(score);
+
+    if (consensusChart) {
+      const ds = consensusChart.data.datasets[0];
+      consensusChart.data.labels.push(turn);
+      ds.data.push(score);
+      ds.pointBackgroundColor = consensusScores.map(s => scoreToColor(s));
+      ds.pointBorderColor     = consensusScores.map(s => scoreToColor(s) + '55');
+      consensusChart.update('active');
+    }
+
+    // Auto-reveal chart on first score
+    if (consensusScores.length === 1 && !chartVisible) {
+      toggleChart();
+    }
+
+    // Score badge
+    const badge = document.getElementById('scoreBadge');
+    const color =
+      score >= 68 ? '#7ecfc4' :
+      score >= 38 ? '#888'    :
+                    '#e8a85f';
+    const borderColor =
+      score >= 68 ? 'rgba(126,207,196,0.25)' :
+      score >= 38 ? 'var(--border)'           :
+                    'rgba(232,168,95,0.25)';
+
+    badge.textContent       = `◈ ${score}`;
+    badge.style.color       = color;
+    badge.style.borderColor = borderColor;
+    badge.classList.remove('pop');
+    void badge.offsetWidth;
+    badge.classList.add('pop');
+
+    // Running average — color the label by avg score too
+    const avg    = Math.round(consensusScores.reduce((a, b) => a + b, 0) / consensusScores.length);
+    const avgEl  = document.getElementById('chartAvgLabel');
+    avgEl.textContent = `avg ${avg}`;
+    avgEl.style.color = scoreToColor(avg);
+  }
+
+  // ─── CHART INIT ───────────────────────────────────────
+  function getThemeColors() {
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    return {
+      grid:    isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)',
+      tick:    isDark ? '#3a3a3a'                 : '#c8c2b8',
+      tooltip: isDark ? 'rgba(14,14,14,0.95)'     : 'rgba(42,37,32,0.95)',
+    };
+  }
+
+  function buildChartConfig() {
+    const c      = getThemeColors();
+    const colors = consensusScores.map(s => scoreToColor(s));
+    return {
+      type: 'line',
+      data: {
+        labels:   consensusScores.map((_, i) => i + 1),
+        datasets: [{
+          label:                'Consensus',
+          data:                 [...consensusScores],
+          // Each segment takes the color of its destination point
+          segment: {
+            borderColor: ctx => scoreToColor(consensusScores[ctx.p1DataIndex] ?? 50),
+          },
+          borderColor:          '#7ecfc4', // fallback only
+          backgroundColor:      'transparent',
+          borderWidth:          1.5,
+          pointRadius:          4,
+          pointHoverRadius:     6,
+          pointBackgroundColor: colors,
+          pointBorderColor:     colors.map(c => c + '55'),
+          pointBorderWidth:     1,
+          tension:              0.38,
+          fill:                 false
+        }]
+      },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        animation:           { duration: 500, easing: 'easeOutQuart' },
+        interaction:         { mode: 'index', intersect: false },
+        scales: {
+          x: {
+            display: true,
+            grid:   { color: c.grid, drawBorder: false, drawTicks: false },
+            ticks:  { color: c.tick, font: { family: 'DM Mono', size: 8 }, maxTicksLimit: 10, padding: 4 },
+            border: { display: false }
+          },
+          y: {
+            display: true,
+            min: 0, max: 100,
+            grid:   { color: c.grid, drawBorder: false, drawTicks: false },
+            ticks:  { color: c.tick, font: { family: 'DM Mono', size: 8 }, stepSize: 25, padding: 6, callback: v => v === 0 ? '' : v },
+            border: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: c.tooltip,
+            borderColor:     '#2e2e2e',
+            borderWidth:     1,
+            padding:         10,
+            titleFont:       { family: 'DM Mono', size: 9, weight: '400' },
+            bodyFont:        { family: 'DM Mono', size: 9 },
+            callbacks: {
+              title: items => `turn ${items[0].label}`,
+              label: item  => {
+                const s     = item.raw;
+                const label = s >= 68 ? 'converging' : s >= 38 ? 'mixed' : 'diverging';
+                return `consensus  ${s}  · ${label}`;
+              },
+              labelColor: item => ({
+                borderColor:     'transparent',
+                backgroundColor: scoreToColor(item.raw)
+              })
+            }
+          }
+        }
+      }
+    };
+  }
+
+  function initChart() {
+    const canvas = document.getElementById('consensusChart');
+    if (consensusChart) { consensusChart.destroy(); consensusChart = null; }
+    consensusChart = new Chart(canvas, buildChartConfig());
+  }
+
+  function rebuildChart() {
+    if (consensusChart) { consensusChart.destroy(); consensusChart = null; }
+    initChart();
+  }
+
+  function toggleChart() {
+    const panel = document.getElementById('chartPanel');
+    chartVisible = !chartVisible;
+    panel.classList.toggle('collapsed', !chartVisible);
+    document.getElementById('chartToggleBtn').style.color =
+      chartVisible ? 'var(--text)' : '';
   }
 
   // ─── MESSAGE RENDERING ────────────────────────────────
@@ -968,64 +1486,60 @@ function startArena() {
   }
 
   function addReflectionDivider(label) {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = 'reflection-divider';
-  div.innerHTML = `
-    <div></div>
-    <span>${label}</span>
-    <div></div>
-  `;
-  container.appendChild(div);
-  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
- }
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'reflection-divider';
+    div.innerHTML = `<div></div><span>${label}</span><div></div>`;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
 
- function addReflectionMessage(speaker, content) {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = `msg reflection-${speaker}`;
-  div.innerHTML = `
-    <div class="msg-label">${capitalize(speaker)} · reflection</div>
-    <div class="msg-bubble">${escapeHtml(content)}</div>
-  `;
-  container.appendChild(div);
-  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-}
+  function addReflectionMessage(speaker, content) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg reflection-${speaker}`;
+    div.innerHTML = `
+      <div class="msg-label">${capitalize(speaker)} · reflection</div>
+      <div class="msg-bubble">${escapeHtml(content)}</div>
+    `;
+    container.appendChild(div);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
 
-async function runReflection(isFinal) {
-  const label = isFinal ? 'Final Evaluation' : 'Reflection';
-  addReflectionDivider(`── ${label} ──`);
+  async function runReflection(isFinal) {
+    const label = isFinal ? 'Final Evaluation' : 'Reflection';
+    addReflectionDivider(`── ${label} ──`);
 
-  for (const speaker of ['llama', 'qwen']) {
-    const typingId = addTypingBubble(speaker);
-    setStatus('live', `${capitalize(speaker)} is reflecting...`);
+    for (const speaker of ['llama', 'qwen']) {
+      const typingId = addTypingBubble(speaker);
+      setStatus('live', `${capitalize(speaker)} is reflecting...`);
 
-    try {
-      const res = await fetch('/reflect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          speaker,
-          topic:             state.topic,
-          history:           state.history,
-          current_turn:      state.currentTurn,
-          total_turns:       state.totalTurns,
-          llama_personality: state.llamaPersonality,
-          qwen_personality:  state.qwenPersonality
-        })
-      });
+      try {
+        const res = await fetch('/reflect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            speaker,
+            topic:             state.topic,
+            history:           state.history,
+            current_turn:      state.currentTurn,
+            total_turns:       state.totalTurns,
+            llama_personality: state.llamaPersonality,
+            qwen_personality:  state.qwenPersonality
+          })
+        });
 
-      const data = await res.json();
-      removeTypingBubble(typingId);
-      addReflectionMessage(speaker, data.content);
-      await new Promise(r => setTimeout(r, 800));
+        const data = await res.json();
+        removeTypingBubble(typingId);
+        addReflectionMessage(speaker, data.content);
+        await new Promise(r => setTimeout(r, 800));
 
-    } catch (err) {
-      removeTypingBubble(typingId);
-      showToast('Reflection failed: ' + err.message);
+      } catch (err) {
+        removeTypingBubble(typingId);
+        showToast('Reflection failed: ' + err.message);
+      }
     }
   }
-}
 
   function addMessage(speaker, content, isConclusion = false) {
     const container = document.getElementById('messages');
@@ -1093,6 +1607,7 @@ async function runReflection(isFinal) {
 
   function resetArena() {
     state.running = false;
+    if (consensusChart) { consensusChart.destroy(); consensusChart = null; }
     showScreen('setup');
   }
 
@@ -1108,12 +1623,10 @@ async function runReflection(isFinal) {
     const input = document.getElementById('injectInput');
     const text  = input.value.trim();
     if (!text) return;
-
     addSystemMessage(text);
     state.history.push({ speaker: 'system', content: `[User interjected]: ${text}` });
     input.value = '';
     document.getElementById('injectBar').classList.remove('open');
-
     if (!state.running && state.currentTurn < state.totalTurns) {
       resumeArena();
     }
@@ -1123,41 +1636,62 @@ async function runReflection(isFinal) {
     if (e.key === 'Enter') injectMessage();
   });
 
+  function downloadConversation() {
+    if (state.history.length === 0) { showToast('No conversation to download yet.'); return; }
 
-function downloadConversation() {
-  if (state.history.length === 0) {
-    showToast('No conversation to download yet.');
-    return;
-  }
+    let text = `DuelMind Conversation\n`;
+    text += `Topic: ${state.topic}\n`;
+    text += `Date: ${new Date().toLocaleString()}\n`;
 
-  let text = `DuelMind Conversation\n`;
-  text += `Topic: ${state.topic}\n`;
-  text += `Date: ${new Date().toLocaleString()}\n`;
-  text += `${'─'.repeat(50)}\n\n`;
-
-  state.history.forEach(msg => {
-    if (msg.speaker === 'system') {
-      text += `[You injected]: ${msg.content}\n\n`;
-    } else {
-      text += `${capitalize(msg.speaker).toUpperCase()}\n${msg.content}\n\n`;
+    if (consensusScores.length > 0) {
+      const avg = Math.round(consensusScores.reduce((a, b) => a + b, 0) / consensusScores.length);
+      text += `Consensus Scores: ${consensusScores.join(', ')} (avg ${avg})\n`;
     }
-  });
 
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `duelmind-${Date.now()}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+    text += `${'─'.repeat(50)}\n\n`;
+
+    state.history.forEach(msg => {
+      if (msg.speaker === 'system') {
+        text += `[You injected]: ${msg.content}\n\n`;
+      } else {
+        text += `${capitalize(msg.speaker).toUpperCase()}\n${msg.content}\n\n`;
+      }
+    });
+
+    if (state.jointConclusion) {
+      text += `${'─'.repeat(50)}\n`;
+      text += `JOINT CONCLUSION (Kimi synthesis)\n\n`;
+      text += `${state.jointConclusion}\n`;
+    }
+
+    if (state.conflicts.length > 0) {
+      text += `\n${'─'.repeat(50)}\n`;
+      text += `CONFLICTS DETECTED\n\n`;
+      state.conflicts.forEach(c => {
+        text += `Turn ${c.turn}:\n`;
+        c.conflicts.forEach(cf => {
+          text += `  [${cf.type}] ${cf.summary}\n`;
+          text += `  Llama: ${cf.llama_claim}\n`;
+          text += `  Qwen:  ${cf.qwen_claim}\n\n`;
+        });
+      });
+    }
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `duelmind-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // ─── UI HELPERS ───────────────────────────────────────
   function updateCombatantUI(active) {
     const cl = document.getElementById('claudeLabel');
     const gl = document.getElementById('geminiLabel');
     cl.className = 'combatant' + (active === 'llama' ? ' active-claude' : '');
-    gl.className = 'combatant' + (active === 'qwen' ? ' active-gemini' : '');
+    gl.className = 'combatant' + (active === 'qwen'  ? ' active-gemini' : '');
   }
 
   function setStatus(type, text) {
@@ -1177,11 +1711,11 @@ function downloadConversation() {
 
   function escapeHtml(str) {
     return str
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/\n/g,'<br>');
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;')
+      .replace(/\n/g, '<br>');
   }
 </script>
 </body>
