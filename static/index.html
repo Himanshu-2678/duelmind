@@ -1093,6 +1093,9 @@
 
     const speaker    = state.currentSpeaker;
     const isLastTurn = state.currentTurn === state.totalTurns - 1;
+    const mode = state.currentTurn === state.totalTurns - 2 ? "synthesis_propose"
+               : state.currentTurn === state.totalTurns - 1 ? "synthesis_refine"
+               : "debate";
 
     updateCombatantUI(speaker);
     setStatus('live', `${capitalize(speaker)} is thinking...`);
@@ -1111,6 +1114,7 @@
           total_turns:       state.totalTurns,
           llama_personality: state.llamaPersonality,
           qwen_personality:  state.qwenPersonality,
+          mode,
         })
       });
 
@@ -1122,7 +1126,7 @@
       const data = await res.json();
 
       removeTypingBubble(typingId);
-      addMessage(speaker, data.content, isLastTurn);
+      addMessage(speaker, data.content, isLastTurn, mode);
 
       state.history.push({ speaker, content: data.content });
 
@@ -1222,7 +1226,6 @@
 
   function addSynthesisCard(text) {
     const container = document.getElementById('messages');
-
     const wrapper = document.createElement('div');
     wrapper.className = 'synthesis-wrapper';
 
@@ -1233,7 +1236,7 @@
       <div class="synthesis-card">
         <div class="synthesis-label">Kimi · synthesis</div>
         <div class="synthesis-text">${escapeHtml(text)}</div>
-        <div class="synthesis-footer">llama · qwen · Kimi</div>
+        <div class="synthesis-footer">llama · qwen · kimi</div>
       </div>
     `;
 
@@ -1541,14 +1544,18 @@
     }
   }
 
-  function addMessage(speaker, content, isConclusion = false) {
-    const container = document.getElementById('messages');
-    const div = document.createElement('div');
-    div.className = `msg ${speaker}${isConclusion ? ' conclusion' : ''}`;
-    div.innerHTML = `
-      <div class="msg-label">${capitalize(speaker)}${isConclusion ? ' · conclusion' : ''}</div>
-      <div class="msg-bubble">${escapeHtml(content)}</div>
-    `;
+  function addMessage(speaker, content, isConclusion = false, mode = "debate") {
+      const isSynthesis = mode === "synthesis_propose" || mode === "synthesis_refine";
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = `msg ${speaker}${isConclusion ? ' conclusion' : ''}`;
+      const label = isSynthesis ? `${capitalize(speaker)} · synthesis`
+                  : isConclusion ? `${capitalize(speaker)} · conclusion`
+                  : capitalize(speaker);
+      div.innerHTML = `
+        <div class="msg-label">${label}</div>
+        <div class="msg-bubble">${escapeHtml(content)}</div>
+      `;
     container.appendChild(div);
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
