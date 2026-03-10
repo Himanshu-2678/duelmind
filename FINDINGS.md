@@ -1,6 +1,8 @@
 # DuelMind - Findings
 
-## 01 · Llama vs Qwen Rhetorical Voice Difference
+## 01 · Llama vs Qwen Rhetorical Voice Difference | 
+
+**Date:** March 2026 <br>
 
 **Topic tested:** "AGI will inevitably be dangerous to humanity  - safety is impossible to guarantee" <br>
 **Personality pairing:** Philosopher (Llama) vs Scientist (Qwen) <br>
@@ -88,3 +90,37 @@ fixed that  - it flags genuine tensions without being sloppy about it.
 Conflict detection works best on topics with a real binary split. When you combine it
 with the consensus score, you get a clearer picture  - low consensus plus a conflict
 tag means the models are actually disagreeing, not just being politely different.
+
+## 04 · Dialectical Turn Mode - Synthesis Negotiation Behavior
+**Feature:** Final two turns shift from debate to structured negotiation <br>
+**Trigger:** Turn N-2 (Llama proposes), Turn N-1 (Qwen critiques and refines) <br>
+**Turn count tested:** 10
+
+### What I noticed
+When Llama is asked to step back and propose a synthesis instead of continuing to
+argue, it does so genuinely. It drops its position, acknowledges what Qwen got right,
+and frames a bridging proposal. It doesn't just summarize - it actually concedes
+ground where the debate warranted it.
+
+Qwen's refinement turn is sharper. It identifies what Llama's proposal missed or
+understated, rewrites the framing, and produces something closer to a negotiated
+conclusion than a compromise. The output reads like a second draft, not a validation.
+
+### Why this works better than just ending the debate
+A debate that ends on a regular turn usually ends mid-argument. Dialectical mode
+gives both models a dedicated off-ramp where the goal shifts from winning to
+resolving. The quality of the joint conclusion that follows is noticeably better
+because the synthesis pipeline has richer material to work with.
+
+### One issue found
+Qwen's thinking process was leaking into its turn output - raw chain-of-thought
+visible in the UI instead of the actual response. Fixed by appending `/no_think`
+to all Qwen system prompts. The Groq API does not support disabling thinking via
+`chat_template_kwargs` - the prompt-level token is the only supported method.
+
+### What this means
+Dialectical mode is worth keeping as a permanent part of the conversation structure.
+The last two turns should always be negotiation turns, not debate turns. The contrast
+between how Llama proposes and how Qwen refines is also consistent with the rhetorical
+voice difference noted in Finding 01.
+
