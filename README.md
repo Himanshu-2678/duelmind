@@ -34,6 +34,8 @@ You observe the conversation in real time, steer it with injected messages, and 
 ## Features
 
 ### Core Reasoning System
+- **Dialectical turn mode** — the final two turns shift from debate to structured negotiation: Llama steps back and proposes a balanced synthesis, then Qwen critiques and refines it into a conclusion both models can stand behind.
+- **Emergent Consensus Builder** - produce a single joint conclusion that fairly represents both perspectives.
 - **Autonomous multi-LLM debate** — two models talk turn by turn without any human input
 - **Structured claim extraction** — after every turn, each response is broken down into claim, reasoning, evidence, and assumptions
 - **Conflict detection** — extracted claims are compared after every exchange and flagged as contradiction or tension
@@ -140,8 +142,7 @@ duelmind/
 1. Token budget: 
 Running on Groq's free tier caps at 100k tokens per day across all models.
 A full 10-turn conversation with reflections, claim extraction, consensus scoring,
-and conflict detection burns roughly 8-10k tokens per run. That gives around
-10 full runs per day before hitting the limit.
+and conflict detection burns roughly 8-10k tokens per run. That gives around 50-60 full runs per day before hitting the limit. The real bottleneck is Llama 3.3 70B's 100k tokens/day cap.
 
 2. Claim extraction reliability:
 The secondary extraction call uses Llama 3.1 8B — a smaller model. On complex
@@ -182,9 +183,9 @@ system stops. There is no fallback to another provider.
 
 ## Roadmap
 
-- Claim graph visualization (argument graph of extracted claims)
-- Belief shift tracking (measure stance changes across turns)
+- Structured synthesis output (agreements / disagreements / open questions) — in progress
 - Improved consensus scoring (judge score + embedding similarity)
-- Structured synthesis output (agreements / disagreements / open questions)
+- Belief shift tracking (measure stance changes across turns)
+- Claim graph visualization (argument graph of extracted claims)
 - Model selector (choose LLMs for debate)
 - Conversation history (save sessions)
