@@ -34,20 +34,20 @@ You observe the conversation in real time, steer it with injected messages, and 
 ## Features
 
 ### Core Reasoning System
-- **Dialectical turn mode** — the final two turns shift from debate to structured negotiation: Llama steps back and proposes a balanced synthesis, then Qwen critiques and refines it into a conclusion both models can stand behind.
+- **Dialectical turn mode** - the final two turns shift from debate to structured negotiation: Llama steps back and proposes a balanced synthesis, then Qwen critiques and refines it into a conclusion both models can stand behind.
 - **Emergent Consensus Builder** - produce a single joint conclusion that fairly represents both perspectives.
-- **Autonomous multi-LLM debate** — two models talk turn by turn without any human input
-- **Structured claim extraction** — after every turn, each response is broken down into claim, reasoning, evidence, and assumptions
-- **Conflict detection** — extracted claims are compared after every exchange and flagged as contradiction or tension
-- **Consensus scoring** — a neutral judge scores substantive agreement between the last two messages on a 0-100 scale after every exchange
-- **Mid-conversation reflection** — every 4 turns, both models pause and honestly evaluate their own reasoning
-- **Emergent consensus synthesis** — after the final evaluation, Llama and Qwen each write a joint synthesis independently, then Kimi K2 merges both as a neutral arbitrator into a single conclusion
+- **Autonomous multi-LLM debate** - two models talk turn by turn without any human input
+- **Structured claim extraction** - after every turn, each response is broken down into claim, reasoning, evidence, and assumptions
+- **Conflict detection** - extracted claims are compared after every exchange and flagged as contradiction or tension
+- **Consensus scoring** - a neutral judge scores substantive agreement between the last two messages on a 0-100 scale after every exchange
+- **Mid-conversation reflection** - every 4 turns, both models pause and honestly evaluate their own reasoning
+- **Emergent consensus synthesis** - after the final evaluation, Llama and Qwen each write a joint synthesis independently, then Kimi K2 merges both as a neutral arbitrator into a single conclusion
 
 ### Interaction and UX
-- **Personality modes** — assign each model a role: Philosopher, Skeptic, Optimist, Scientist, or Debater
-- **Inject messages** — steer the conversation mid-way as a human observer
-- **Real-time consensus graph** — live color-coded line chart showing agreement over time, amber for diverging, gray for mixed, teal for converging
-- **Export** — download the full conversation, consensus scores, detected conflicts, and joint conclusion as a `.txt` file
+- **Personality modes** - assign each model a role: Philosopher, Skeptic, Optimist, Scientist, or Debater
+- **Inject messages** - steer the conversation mid-way as a human observer
+- **Real-time consensus graph** - live color-coded line chart showing agreement over time, amber for diverging, gray for mixed, teal for converging
+- **Export** - download the full conversation, consensus scores, detected conflicts, and joint conclusion as a `.txt` file
 
 
 ## Tech Stack
@@ -58,8 +58,8 @@ You observe the conversation in real time, steer it with injected messages, and 
 | Frontend | HTML, CSS, Vanilla JS |
 | LLM Provider | Groq API (free tier) |
 | Debate models | Llama 3.3 70B (Meta) · Qwen3 32B (Alibaba) |
-| Analysis models | Llama 3.1 8B — structured claim extraction |
-| | Kimi K2 (Moonshot AI) — consensus scoring, conflict detection, synthesis arbitration |
+| Analysis models | Llama 3.1 8B - structured claim extraction |
+| | Kimi K2 (Moonshot AI) - consensus scoring, conflict detection, synthesis arbitration |
 | Visualization | Chart.js |
 
 
@@ -118,7 +118,7 @@ duelmind/
 2. Frontend sends turn requests to the `/turn` endpoint
 3. Backend calls the debate model (Llama or Qwen) and returns a natural language response
 4. Response is rendered in the UI
-5. A secondary extraction call converts the response into a structured claim — claim, reasoning, evidence, and assumptions
+5. A secondary extraction call converts the response into a structured claim - claim, reasoning, evidence, and assumptions
 6. Claims are stored and compared after every exchange for logical conflicts via `/detect_conflicts`
 7. After every exchange, a judge model scores substantive agreement between the last two messages via `/consensus`
 8. Every 4 turns, both models pause and self-reflect via `/reflect`
@@ -145,7 +145,7 @@ A full 10-turn conversation with reflections, claim extraction, consensus scorin
 and conflict detection burns roughly 8-10k tokens per run. That gives around 50-60 full runs per day before hitting the limit. The real bottleneck is Llama 3.3 70B's 100k tokens/day cap.
 
 2. Claim extraction reliability:
-The secondary extraction call uses Llama 3.1 8B — a smaller model. On complex
+The secondary extraction call uses Llama 3.1 8B - a smaller model. On complex
 or abstract arguments it sometimes produces shallow claims that miss the actual
 position being argued. This directly affects the quality of conflict detection
 downstream.
@@ -183,7 +183,7 @@ system stops. There is no fallback to another provider.
 
 ## Roadmap
 
-- Structured synthesis output (agreements / disagreements / open questions) — in progress
+- Structured synthesis output (agreements / disagreements / open questions) - in progress
 - Improved consensus scoring (judge score + embedding similarity)
 - Belief shift tracking (measure stance changes across turns)
 - Claim graph visualization (argument graph of extracted claims)
