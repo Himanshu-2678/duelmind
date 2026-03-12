@@ -165,7 +165,7 @@ def detect_conflicts(req: ConflictRequest):
 
 @app.post("/synthesize")
 def get_synthesis(req: SynthesizeRequest):
-    # Step 1 Llama writes its synthesis attempt
+    # Step 1 — Llama writes its synthesis attempt
     llama_prompt = f"""You are Llama, an AI by Meta. You just had a full conversation with Qwen about: '{req.topic}'.
 
                 Here is your final reflection:
@@ -183,7 +183,7 @@ def get_synthesis(req: SynthesizeRequest):
         temperature=0.5
     ).choices[0].message.content.strip()
 
-    # Step 2 - Qwen writes its synthesis attempt
+    # Step 2 — Qwen writes its synthesis attempt
     qwen_prompt = f"""You are Qwen, an AI by Alibaba. You just had a full conversation with Llama about: '{req.topic}'.
 
                 Here is your final reflection:
@@ -203,31 +203,81 @@ def get_synthesis(req: SynthesizeRequest):
     qwen_synth = re.sub(r'<think>.*?</think>', '', qwen_raw, flags=re.DOTALL).strip()
     qwen_synth = re.sub(r'<think>.*', '', qwen_synth, flags=re.DOTALL).strip()
 
-    # Step 3 - Kimi acts as neutral arbitrator and merges both
-    merge_prompt = f"""You are a neutral arbitrator. Two AI models - Llama and Qwen - just completed a conversation about: '{req.topic}'.
+    # Step 3 — Kimi acts as neutral arbitrator, merges both, and returns structured output
+    merge_prompt = f"""You are a neutral arbitrator. Two AI models — Llama and Qwen — just completed a debate about: '{req.topic}'.
 
-                Each has independently written a joint synthesis of what they agreed on.
+Each independently wrote a joint synthesis of what they agreed on.
 
-                Llama's synthesis:
-                {llama_synth}
+Llama's synthesis:
+{llama_synth}
 
-                Qwen's synthesis:
-                {qwen_synth}
+Qwen's synthesis:
+{qwen_synth}
 
-                Your task: merge these into one final, neutral paragraph. Preserve only the points both syntheses share. Do not introduce new ideas. Do not favor either model's framing. If they disagree even in their syntheses, note it briefly. Write as a neutral third party. Plain text only. No markdown. 3-5 sentences."""
+Analyze both syntheses carefully. Return ONLY a valid JSON object with this exact structure:
+{{
+  "joint": "2-3 sentence neutral paragraph that merges only the points both syntheses genuinely share. Do not favor either model's framing. Plain prose.",
+  "agreements": [
+    "specific claim or position both syntheses explicitly share",
+    "another shared point"
+  ],
+  "disagreements": [
+    "a point where the two syntheses still diverge or frame things differently",
+    "another unresolved tension"
+  ],
+  "open_questions": [
+    "a question the debate raised but neither model resolved",
+    "another open question"
+  ],
+  "confidence": <integer 0-100: how much genuine convergence was reached — 0 = complete disagreement, 100 = full consensus>
+}}
 
-    merged = client.chat.completions.create(
-        model="moonshotai/kimi-k2-instruct",
-        messages=[{"role": "user", "content": merge_prompt}],
-        max_tokens=400,
-        temperature=0.3
-    ).choices[0].message.content.strip()
+Rules:
+- agreements: only points clearly present in BOTH syntheses — be conservative
+- disagreements: points where Llama and Qwen still frame things differently, even in synthesis
+- open_questions: questions neither model answered — these often appear as hedges or qualifications
+- confidence: honest score — most good debates land between 30 and 70
+- 2-4 items per array; use empty array [] only if truly none exist
+- joint: neutral, no new ideas, no advocacy
+- No markdown fences, no explanation outside the JSON. Valid JSON only."""
 
-    return {
-        "llama_synthesis": llama_synth,
-        "qwen_synthesis":  qwen_synth,
-        "joint":           merged
-    }
+    try:
+        response = client.chat.completions.create(
+            model="moonshotai/kimi-k2-instruct",
+            messages=[{"role": "user", "content": merge_prompt}],
+            max_tokens=800,
+            temperature=0.3
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'```json|```', '', raw).strip()
+        structured = json.loads(raw)
+
+        # Ensure all expected keys exist with safe fallbacks
+        return {
+            "llama_synthesis": llama_synth,
+            "qwen_synthesis":  qwen_synth,
+            "joint":           structured.get("joint", ""),
+            "agreements":      structured.get("agreements", []),
+            "disagreements":   structured.get("disagreements", []),
+            "open_questions":  structured.get("open_questions", []),
+            "confidence":      max(0, min(100, int(structured.get("confidence", 50)))),
+        }
+
+    except Exception:
+        # Graceful fallback — if Kimi returns malformed JSON, surface what we have
+        # Try to extract joint text from raw if possible
+        joint_match = re.search(r'"joint"\s*:\s*"([^"]+)"', raw if 'raw' in dir() else '')
+        joint_text = joint_match.group(1) if joint_match else (llama_synth[:300] + "…")
+
+        return {
+            "llama_synthesis": llama_synth,
+            "qwen_synthesis":  qwen_synth,
+            "joint":           joint_text,
+            "agreements":      [],
+            "disagreements":   [],
+            "open_questions":  [],
+            "confidence":      None,
+        }
 
 
 def extract_claim(speaker, content, topic):
