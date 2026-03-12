@@ -78,6 +78,10 @@
     @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.3} }
     @keyframes spin     { to { transform: rotate(360deg); } }
     @keyframes scorePop { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+    @keyframes listSlide {
+      from { opacity:0; transform:translateX(-6px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
 
     /* ─── SCREENS ────────────────────────────────────── */
     .screen { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
@@ -703,7 +707,6 @@
     }
 
     /* ─── SYNTHESIS CARD ─────────────────────────────── */
-    /* neutral warm stone -- distinct from teal (llama) and amber (qwen) */
     :root { --synthesis: #a09a8e; }
 
     .synthesis-wrapper {
@@ -744,14 +747,20 @@
       white-space: nowrap;
     }
 
+    /* Main card shell */
     .synthesis-card {
-      width: 58%;
-      background: rgba(160,154,142,0.05);
-      border: 1px solid rgba(160,154,142,0.2);
+      width: 62%;
+      background: rgba(160,154,142,0.04);
+      border: 1px solid rgba(160,154,142,0.18);
       border-radius: 10px;
-      padding: 24px 28px;
+      overflow: hidden;
+    }
+
+    /* Top joint-conclusion section */
+    .synthesis-joint {
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid rgba(160,154,142,0.12);
       text-align: center;
-      position: relative;
     }
 
     .synthesis-label {
@@ -772,12 +781,141 @@
       font-style: italic;
     }
 
-    .synthesis-footer {
-      margin-top: 14px;
+    /* Structured sections grid */
+    .synthesis-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .synthesis-section {
+      padding: 18px 22px;
+      border-right: 1px solid rgba(160,154,142,0.1);
+      border-bottom: 1px solid rgba(160,154,142,0.1);
+    }
+
+    .synthesis-section:nth-child(2n) { border-right: none; }
+    .synthesis-section:nth-last-child(-n+2) { border-bottom: none; }
+
+    /* Open questions spans full width if alone */
+    .synthesis-section.full-width {
+      grid-column: 1 / -1;
+      border-right: none;
+    }
+
+    .synthesis-section-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 11px;
+    }
+
+    .synthesis-section-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .section-agreements  .synthesis-section-dot { background: #7ecfc4; }
+    .section-disagreements .synthesis-section-dot { background: #e8a85f; }
+    .section-questions   .synthesis-section-dot { background: var(--synthesis); opacity: 0.7; }
+
+    .synthesis-section-title {
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+    }
+
+    .synthesis-section ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .synthesis-section ul li {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text2);
+      padding-left: 12px;
+      position: relative;
+      animation: listSlide 0.4s ease both;
+    }
+
+    .synthesis-section ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 4px;
+      height: 1px;
+      background: var(--text3);
+    }
+
+    /* stagger each list item */
+    .synthesis-section ul li:nth-child(1) { animation-delay: 0.05s; }
+    .synthesis-section ul li:nth-child(2) { animation-delay: 0.12s; }
+    .synthesis-section ul li:nth-child(3) { animation-delay: 0.19s; }
+    .synthesis-section ul li:nth-child(4) { animation-delay: 0.26s; }
+
+    /* Empty state for a section */
+    .synthesis-section-empty {
+      font-size: 10px;
+      color: var(--text3);
+      font-family: 'DM Mono', monospace;
+      font-style: italic;
+      letter-spacing: 0.5px;
+    }
+
+    /* Confidence + footer row */
+    .synthesis-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 22px;
+      border-top: 1px solid rgba(160,154,142,0.12);
+    }
+
+    .synthesis-footer-label {
       font-size: 9px;
       letter-spacing: 1.5px;
       color: var(--text3);
       font-family: 'DM Mono', monospace;
+    }
+
+    /* Confidence bar */
+    .confidence-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .confidence-bar-track {
+      width: 90px;
+      height: 3px;
+      background: rgba(160,154,142,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 1s ease 0.3s;
+    }
+
+    .confidence-value {
+      font-size: 9px;
+      letter-spacing: 1px;
+      font-family: 'DM Mono', monospace;
+      color: var(--text3);
+      font-variant-numeric: tabular-nums;
+      min-width: 30px;
+      text-align: right;
     }
 
     /* ─── CONFLICT TAG ───────────────────────────────── */
@@ -1045,6 +1183,7 @@
       running: true, currentSpeaker: 'llama',
       llamaPersonality, qwenPersonality,
       jointConclusion: null,
+      synthesis: null,
       claims: [],
       conflicts: []
     };
@@ -1130,7 +1269,7 @@
 
       state.history.push({ speaker, content: data.content });
 
-      // store extracted claim silently — used by conflict detection (Step 3)
+      // store extracted claim silently — used by conflict detection
       if (data.claim) {
         state.claims.push({
           speaker,
@@ -1149,7 +1288,6 @@
         if (llamaMsg) {
           fetchConsensus(llamaMsg.content, data.content);
         }
-        // conflict detection — needs structured claims from both sides
         const llamaClaim = [...state.claims].reverse().find(c => c.speaker === 'llama');
         const qwenClaim  = [...state.claims].reverse().find(c => c.speaker === 'qwen');
         if (llamaClaim && qwenClaim) {
@@ -1191,11 +1329,8 @@
   async function runSynthesis() {
     setStatus('live', 'Building joint conclusion...');
 
-    // Grab the last reflection from each speaker out of history
-    const llamaRef = [...state.history].reverse().find(m => m.speaker === 'llama' && m.type === 'reflection');
-    const qwenRef  = [...state.history].reverse().find(m => m.speaker === 'qwen'  && m.type === 'reflection');
-
-    // Fallback to last regular message if reflections not stored in history
+    const llamaRef  = [...state.history].reverse().find(m => m.speaker === 'llama' && m.type === 'reflection');
+    const qwenRef   = [...state.history].reverse().find(m => m.speaker === 'qwen'  && m.type === 'reflection');
     const llamaText = llamaRef?.content || [...state.history].reverse().find(m => m.speaker === 'llama')?.content || '';
     const qwenText  = qwenRef?.content  || [...state.history].reverse().find(m => m.speaker === 'qwen')?.content  || '';
 
@@ -1214,34 +1349,112 @@
       if (!res.ok) return;
       const data = await res.json();
 
-      // Store in state for export
+      // Store for export
       state.jointConclusion = data.joint;
+      state.synthesis       = data;
 
-      addSynthesisCard(data.joint);
+      addSynthesisCard(data);
 
     } catch (e) {
-      // non-blocking — if synthesis fails, conversation is still complete
+      // non-blocking
     }
   }
 
-  function addSynthesisCard(text) {
+  // ─── SYNTHESIS CARD RENDERER ──────────────────────────
+  function addSynthesisCard(data) {
     const container = document.getElementById('messages');
-    const wrapper = document.createElement('div');
+    const wrapper   = document.createElement('div');
     wrapper.className = 'synthesis-wrapper';
 
-    wrapper.innerHTML = `
-      <div class="synthesis-divider">
-        <span>Joint Conclusion</span>
-      </div>
-      <div class="synthesis-card">
+    // ── Joint conclusion section ──
+    const jointHtml = `
+      <div class="synthesis-joint">
         <div class="synthesis-label">Kimi · synthesis</div>
-        <div class="synthesis-text">${escapeHtml(text)}</div>
-        <div class="synthesis-footer">llama · qwen · kimi</div>
-      </div>
-    `;
+        <div class="synthesis-text">${escapeHtml(data.joint || '')}</div>
+      </div>`;
+
+    // ── Helper: build a section ──
+    function sectionHtml(sectionClass, dotClass, title, items, fullWidth) {
+      const isEmpty = !items || items.length === 0;
+      const itemsHtml = isEmpty
+        ? `<span class="synthesis-section-empty">none identified</span>`
+        : `<ul>${items.map((item, i) =>
+            `<li style="animation-delay:${0.05 + i * 0.07}s">${escapeHtml(item)}</li>`
+          ).join('')}</ul>`;
+
+      return `
+        <div class="synthesis-section ${sectionClass}${fullWidth ? ' full-width' : ''}">
+          <div class="synthesis-section-header">
+            <div class="synthesis-section-dot ${dotClass}"></div>
+            <span class="synthesis-section-title">${title}</span>
+          </div>
+          ${itemsHtml}
+        </div>`;
+    }
+
+    const agreements    = data.agreements    || [];
+    const disagreements = data.disagreements || [];
+    const questions     = data.open_questions || [];
+
+    // Open questions spans full width when it's the only odd item or when top two sections have content
+    const questionsHtml = sectionHtml(
+      'section-questions', '', 'Open Questions',
+      questions,
+      (agreements.length > 0 || disagreements.length > 0)  // full-width only when paired sections exist above
+    );
+
+    const sectionsHtml = `
+      <div class="synthesis-sections">
+        ${sectionHtml('section-agreements',    'claude', 'Agreements',    agreements)}
+        ${sectionHtml('section-disagreements', 'gemini', 'Disagreements', disagreements)}
+        ${questionsHtml}
+      </div>`;
+
+    // ── Confidence bar ──
+    let footerHtml = '';
+    if (data.confidence !== null && data.confidence !== undefined) {
+      const conf  = data.confidence;
+      const color = conf >= 65 ? '#7ecfc4' : conf >= 40 ? '#a09a8e' : '#e8a85f';
+      footerHtml = `
+        <div class="synthesis-footer-row">
+          <span class="synthesis-footer-label">llama · qwen · kimi</span>
+          <div class="confidence-wrap">
+            <span class="synthesis-footer-label">confidence</span>
+            <div class="confidence-bar-track">
+              <div class="confidence-bar-fill"
+                   style="width:0%; background:${color};"
+                   data-target="${conf}">
+              </div>
+            </div>
+            <span class="confidence-value" style="color:${color}">${conf}</span>
+          </div>
+        </div>`;
+    } else {
+      footerHtml = `
+        <div class="synthesis-footer-row">
+          <span class="synthesis-footer-label">llama · qwen · kimi</span>
+        </div>`;
+    }
+
+    wrapper.innerHTML = `
+      <div class="synthesis-divider"><span>Joint Conclusion</span></div>
+      <div class="synthesis-card">
+        ${jointHtml}
+        ${sectionsHtml}
+        ${footerHtml}
+      </div>`;
 
     container.appendChild(wrapper);
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+    // Animate confidence bar fill after element is in DOM
+    requestAnimationFrame(() => {
+      const fill = wrapper.querySelector('.confidence-bar-fill[data-target]');
+      if (fill) {
+        const target = fill.getAttribute('data-target');
+        requestAnimationFrame(() => { fill.style.width = target + '%'; });
+      }
+    });
   }
 
   // ─── CONFLICT DETECTION ───────────────────────────────
@@ -1265,7 +1478,6 @@
           turn:      Math.ceil(state.currentTurn / 2),
           conflicts: data.conflicts
         });
-        // attach tag to the last Qwen bubble in the messages area
         addConflictTag(data.conflicts);
       }
 
@@ -1275,7 +1487,6 @@
   }
 
   function addConflictTag(conflicts) {
-    // find the last qwen message bubble and append tag below it
     const messages  = document.getElementById('messages');
     const qwenMsgs  = messages.querySelectorAll('.msg.qwen');
     const lastQwen  = qwenMsgs[qwenMsgs.length - 1];
@@ -1310,14 +1521,14 @@
         })
       });
 
-      if (!res.ok) return; // silent fail — don't interrupt conversation
+      if (!res.ok) return;
 
       const data = await res.json();
       const turn = Math.ceil(state.currentTurn / 2);
       updateConsensusChart(data.score, turn);
 
     } catch (e) {
-      // non-blocking — chart simply won't update this turn
+      // non-blocking
     }
   }
 
@@ -1361,7 +1572,7 @@
     void badge.offsetWidth;
     badge.classList.add('pop');
 
-    // Running average — color the label by avg score too
+    // Running average
     const avg    = Math.round(consensusScores.reduce((a, b) => a + b, 0) / consensusScores.length);
     const avgEl  = document.getElementById('chartAvgLabel');
     avgEl.textContent = `avg ${avg}`;
@@ -1388,11 +1599,10 @@
         datasets: [{
           label:                'Consensus',
           data:                 [...consensusScores],
-          // Each segment takes the color of its destination point
           segment: {
             borderColor: ctx => scoreToColor(consensusScores[ctx.p1DataIndex] ?? 50),
           },
-          borderColor:          '#7ecfc4', // fallback only
+          borderColor:          '#7ecfc4',
           backgroundColor:      'transparent',
           borderWidth:          1.5,
           pointRadius:          4,
@@ -1545,17 +1755,17 @@
   }
 
   function addMessage(speaker, content, isConclusion = false, mode = "debate") {
-      const isSynthesis = mode === "synthesis_propose" || mode === "synthesis_refine";
-      const container = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.className = `msg ${speaker}${isConclusion ? ' conclusion' : ''}`;
-      const label = isSynthesis ? `${capitalize(speaker)} · synthesis`
-                  : isConclusion ? `${capitalize(speaker)} · conclusion`
-                  : capitalize(speaker);
-      div.innerHTML = `
-        <div class="msg-label">${label}</div>
-        <div class="msg-bubble">${escapeHtml(content)}</div>
-      `;
+    const isSynthesis = mode === "synthesis_propose" || mode === "synthesis_refine";
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${speaker}${isConclusion ? ' conclusion' : ''}`;
+    const label = isSynthesis ? `${capitalize(speaker)} · synthesis`
+                : isConclusion ? `${capitalize(speaker)} · conclusion`
+                : capitalize(speaker);
+    div.innerHTML = `
+      <div class="msg-label">${label}</div>
+      <div class="msg-bubble">${escapeHtml(content)}</div>
+    `;
     container.appendChild(div);
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
@@ -1665,10 +1875,30 @@
       }
     });
 
-    if (state.jointConclusion) {
+    if (state.synthesis) {
+      const s = state.synthesis;
       text += `${'─'.repeat(50)}\n`;
       text += `JOINT CONCLUSION (Kimi synthesis)\n\n`;
-      text += `${state.jointConclusion}\n`;
+      text += `${s.joint || ''}\n`;
+
+      if (s.agreements && s.agreements.length > 0) {
+        text += `\nAGREEMENTS\n`;
+        s.agreements.forEach(a => { text += `  · ${a}\n`; });
+      }
+
+      if (s.disagreements && s.disagreements.length > 0) {
+        text += `\nDISAGREEMENTS\n`;
+        s.disagreements.forEach(d => { text += `  · ${d}\n`; });
+      }
+
+      if (s.open_questions && s.open_questions.length > 0) {
+        text += `\nOPEN QUESTIONS\n`;
+        s.open_questions.forEach(q => { text += `  · ${q}\n`; });
+      }
+
+      if (s.confidence !== null && s.confidence !== undefined) {
+        text += `\nConfidence: ${s.confidence}/100\n`;
+      }
     }
 
     if (state.conflicts.length > 0) {
@@ -1717,6 +1947,7 @@
   function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   function escapeHtml(str) {
+    if (!str) return '';
     return str
       .replace(/&/g,  '&amp;')
       .replace(/</g,  '&lt;')
