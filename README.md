@@ -1,11 +1,12 @@
 # DuelMind
 
 <p>
-DuelMind is a multi-LLM deliberation arena where models debate a topic, extract structured claims,
-detect conflicts, track consensus over time, and synthesize a joint conclusion.
+DuelMind is a multi-agent LLM deliberation framework that instruments debate
+dynamics through structured argument extraction, conflict detection,
+consensus scoring, reflection cycles, and arbitration synthesis.
 </p>
 
-<p><em>Built just for fun to observe what two AIs think about topics we've never imagined, or approached from angles we'd never consider ourselves.</em></p>
+<p><em>Built just for fun as an experiment to observe what two AIs think about topics we've never imagined, or approached from angles we'd never consider ourselves.</em></p>
 
 
 ## Story Behind DuelMind
@@ -24,7 +25,7 @@ detect conflicts, track consensus over time, and synthesize a joint conclusion.
 
 ## What is DuelMind?
 
-DuelMind is an AI deliberation arena where two large language models - **Llama 3.3 70B** (Meta) and **Qwen3 32B** (Alibaba) - engage in a free-flowing discussion on any topic you give them.
+DuelMind is an AI deliberation framework where two large language models - **Llama 3.3 70B** (Meta) and **Qwen3 32B** (Alibaba) - engage in a free-flowing discussion on any topic you give them.
 
 You observe the conversation in real time, steer it with injected messages, and watch as the models reflect on their own reasoning, detect conflicts in each other's positions, and produce a final joint conclusion arbitrated by a third neutral model.
 
@@ -35,19 +36,22 @@ You observe the conversation in real time, steer it with injected messages, and 
 
 ### Core Reasoning System
 - **Dialectical turn mode** - the final two turns shift from debate to structured negotiation: Llama steps back and proposes a balanced synthesis, then Qwen critiques and refines it into a conclusion both models can stand behind.
-- **Emergent Consensus Builder** - produce a single joint conclusion that fairly represents both perspectives.
 - **Autonomous multi-LLM debate** - two models talk turn by turn without any human input
-- **Structured claim extraction** - after every turn, each response is broken down into claim, reasoning, evidence, and assumptions
+- **Structured claim extraction** - after every turn, each response is converted into a structured argument consisting of claim, reasoning, evidence, and assumptions.
 - **Conflict detection** - extracted claims are compared after every exchange and flagged as contradiction or tension
 - **Consensus scoring** - a neutral judge scores substantive agreement between the last two messages on a 0-100 scale after every exchange
 - **Mid-conversation reflection** - every 4 turns, both models pause and honestly evaluate their own reasoning
-- **Emergent consensus synthesis** - after the final evaluation, Llama and Qwen each write a joint synthesis independently, then Kimi K2 merges both as a neutral arbitrator into a single conclusion
+- **Three-model synthesis pipeline** - after the final evaluation, Llama and Qwen each write a joint synthesis independently, then Kimi K2 merges both as a neutral arbitrator into a structured conclusion broken down into:
+  - agreements - points both models genuinely shared
+  - disagreements - where they still diverged even in synthesis
+  - open questions - things the debate raised but neither model resolved
+  - confidence score - an honest 0-100 measure of how much convergence actually happened
 
 ### Interaction and UX
 - **Personality modes** - assign each model a role: Philosopher, Skeptic, Optimist, Scientist, or Debater
 - **Inject messages** - steer the conversation mid-way as a human observer
 - **Real-time consensus graph** - live color-coded line chart showing agreement over time, amber for diverging, gray for mixed, teal for converging
-- **Export** - download the full conversation, consensus scores, detected conflicts, and joint conclusion as a `.txt` file
+- **Export** - download the full conversation, consensus scores, detected conflicts, structured synthesis, and joint conclusion as a `.txt` file
 
 
 ## Tech Stack
@@ -57,7 +61,7 @@ You observe the conversation in real time, steer it with injected messages, and 
 | Backend | Python, FastAPI, Uvicorn |
 | Frontend | HTML, CSS, Vanilla JS |
 | LLM Provider | Groq API (free tier) |
-| Debate models | Llama 3.3 70B (Meta) · Qwen3 32B (Alibaba) |
+| Debate models | Llama 3.3 70B (Meta), Qwen3 32B (Alibaba) |
 | Analysis models | Llama 3.1 8B - structured claim extraction |
 | | Kimi K2 (Moonshot AI) - consensus scoring, conflict detection, synthesis arbitration |
 | Visualization | Chart.js |
@@ -124,7 +128,7 @@ duelmind/
 8. Every 4 turns, both models pause and self-reflect via `/reflect`
 9. After the final turn, a full evaluation round triggers automatically
 10. Llama and Qwen each write a joint synthesis independently via `/synthesize`
-11. Kimi K2 merges both syntheses into a single neutral joint conclusion
+11. Kimi K2 merges both syntheses into a structured conclusion with agreements, disagreements, open questions, and a confidence score
 
 ## API Endpoints
 
@@ -183,8 +187,7 @@ system stops. There is no fallback to another provider.
 
 ## Roadmap
 
-- Structured synthesis output (agreements / disagreements / open questions) - in progress
-- Improved consensus scoring (judge score + embedding similarity)
+- Improve consensus scoring (judge score + embedding similarity)
 - Belief shift tracking (measure stance changes across turns)
 - Claim graph visualization (argument graph of extracted claims)
 - Model selector (choose LLMs for debate)
